@@ -35,7 +35,7 @@
 | 9 | `driver_imd_decile` | int8 | 1–10 (с 2016) | NA (-1) |
 | 10 | `escooter_flag` | int8 | 1 yes, 0 no (поле с 2023) | NA (-1) для 2021–2022; 0/1 с 2023 |
 
-## Таблица 3. Collision (10 ключевых колонок)
+## Таблица 3. Collision (19 ключевых колонок)
 
 | № | Колонка | Тип | Описание | Пропуск (NA)? |
 |---|---|---|---|---|
@@ -49,5 +49,16 @@
 | 8 | `police_force` | int16 | 1–99; 91–98 discontinued 2019; 99 Police Scotland с 2019 | не пропуск |
 | 9 | `road_type` | int8 | 1 roundabout, 2 one way, 3 dual, 6 single, 7 slip, 9 unknown, 12 one way/slip | unknown (9) / NA (-1) |
 | 10 | `urban_or_rural_area` | int8 | 1 urban, 2 rural, 3 unallocated | NA (-1) |
+| 11 | `weather_conditions` | int8 | 1 fine no high winds, 2 raining no high winds, 3 snowing no high winds, 4 fine + high winds, 5 raining + high winds, 6 snowing + high winds, 7 fog or mist, 8 other, 9 unknown | unknown (9) / NA (-1) |
+| 12 | `light_conditions` | int8 | 1 daylight, 4 darkness — lights lit, 5 darkness — lights unlit, 6 darkness — no lighting, 7 darkness — lighting unknown | NA (-1) |
+| 13 | `road_surface_conditions` | int8 | 1 dry, 2 wet or damp, 3 snow, 4 frost or ice, 5 flood over 3cm deep, 6 oil or diesel, 7 mud, 9 unknown (self reported) | unknown (9) / NA (-1) |
+| 14 | `speed_limit` | int8 | 20, 30, 40, 50, 60, 70 — единственно валидные на публичных дорогах | unknown (99, self reported) / NA (-1) |
+| 15 | `longitude` | float | Долгота | NA (null) |
+| 16 | `latitude` | float | Широта | NA (null) |
+| 17 | `location_easting_osgr` | int32 | Easting OSGR | NA (null) |
+| 18 | `location_northing_osgr` | int32 | Northing OSGR | NA (null) |
+| 19 | `local_authority_district` | int16 | Код района (1–941); `-1` — code deprecated | NA (-1) |
 
-`lsoa_of_collision_location` — England and Wales only (Scotland → NA).
+`lsoa_of_accident_location` — England and Wales only (Scotland → NA).
+
+Примечания: `longitude`/`latitude` и `location_easting_osgr`/`location_northing_osgr` — взаимозаменяемые пары координат, не категории; `speed_limit = 99` — unknown (self reported), не порядковая категория, не усреднять как число без обработки 99; `local_authority_district` — не `local_authority_ons_district` (ONS-код), это разные колонки.
