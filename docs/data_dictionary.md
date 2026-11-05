@@ -1,22 +1,53 @@
-| Колонка | Смысл | Тип | Коды / значения | Спецкоды (смысл) | Доля / строки | Пропуск (NA)? | Заметки |
-|---|---|---|---|---|---|---|---|
-| collision_index | Уникальный ID ДТП (collision_year + collision_ref_no) | id | — | — | — | нет | ключ join к Vehicle/Casualty |
-| collision_year | Год ДТП | категория | — | — | — | нет | |
-| collision_ref_no | Внутригодовой номер ДТП | id | — | — | — | нет | не уникален вне года |
-| date | Дата ДТП | дата | DD/MM/YYYY | — | NaN: 0 / 0.00% | нет | парсить dayfirst=True |
-| time | Время ДТП | время | HH:MM | Null if not known | NaN: 0 / 0.00% | нет фактических пропусков | |
-| latitude | Широта | число | — | настоящие NaN | 53 / 0.01% | да | |
-| longitude | Долгота | число | — | настоящие NaN | 53 / 0.01% | да | |
-| police_force | Полицейский участок | категория | 1–99; 91–98 discontinued 2019 | 99 = Police Scotland (реальные данные, не пропуск) | 99: 4.00% | нет | |
-| collision_severity | Тяжесть ДТП | категория | 1 fatal, 2 serious, 3 slight | нет | — | нет | |
-| enhanced_collision_severity | Расширенная тяжесть (с 2023) | категория | — | — | — | — | колонки нет в collision-last-5-years.csv (`False`); «-1 39.85%» к этому файлу не относить |
-| day_of_week | День недели | категория | 1 Sunday … 7 Saturday | нет | — | нет | **сверено** с date через crosstab: диагональ без расхождений (0↔2, 1↔3, 2↔4, 3↔5, 4↔6, 5↔7, 6↔1); date parse NaN: 0 |
-| local_authority_district | Район | категория | 940 = West Lothian | -1 = Code deprecated | -1: 99.96% | нет | колонка непригодна; заменяю на local_authority_highway_current (альт. local_authority_ons_district) |
-| road_type | Тип дороги | категория | 6=72.61%, 3=14.81%, 1=6.07%, 2=2.25%, 7=1.72% | -1 = missing/out of range (0 строк); 9 = Unknown | 9: 13 060 / 2.54% | -1 → да (нет в данных); 9 → unknown | |
-| speed_limit | Ограничение скорости, мили/ч | число | 30=52.03%, 20=17.15%, 60=12.20%, 40=8.71%, 70=5.50%, 50=4.41% | -1 = missing/out of range; 99 = unknown (self reported) | -1: 3 / 0.00%; 99: 0 строк | -1 → NaN; 99 → NaN | -1 и 99 заменяются на NaN до расчётов |
-| weather_conditions | Погода | категория | 1=80.50%, 2=10.87%, 8=3.11%, 5=1.01%, 4=0.87%, 7=0.41%, 3=0.35%, 6=0.05% | -1 = missing/out of range; 9 = Unknown | -1: 12 / 0.00%; 9: 14 566 / 2.83% | -1 → да; 9 → unknown | 8 = Other |
-| light_conditions | Освещённость | категория | 1=71.66%, 4=20.60%, 6=5.34%, 7=1.67%, 5=0.72% | -1 = missing/out of range | -1: 34 / 0.01% | да | |
-| road_surface_conditions | Состояние покрытия | категория | 1=72.84%, 2=23.47%, 4=1.30%, 3=0.24%, 5=0.15% | -1 = missing/out of range; 9 = unknown (self reported) | -1: 3 527 / 0.69%; 9: 6 721 / 1.31% | -1 → да; 9 → unknown | |
-| urban_or_rural_area | Город/село | категория | 1 Urban=67.21%, 2 Rural=32.78%, 3 Unallocated=0.01% | -1 = missing/out of range | -1: 8 / 0.00%; 3: 50 / 0.01% | -1 → да; 3 — не missing, а Unallocated | |
-| number_of_vehicles | Число ТС | число | 1=29.32%, 2=61.88%, 3=6.82%, 4=1.42%, 5=0.37%, 6=0.12%, 7=0.05%, 8=0.02%, 9=0.01%, 10=0.01%, 11–26 — единичные (≤0.00%) | спецкодов нет | — | нет | 9 — это число ТС, не спецкод |
-| number_of_casualties | Число пострадавших | число | 1=81.50%, 2=13.05%, 3=3.54%, 4=1.22%, 5=0.45%, 6=0.14%, 7=0.06%, 8=0.02%, 9=0.01%, 10=0.01%, 11–32 — единичные (≤0.00%) | спецкодов нет | — | нет | 9 — это число пострадавших (36 строк), не спецкод; `70=1` и `142=1` — data quality, проверить точечно, в анализ не брать |
+# Словари данных: casualty / vehicle / collision (по guide 2025)
+
+Единая терминология в «Пропуск (NA)?»: **NA** (`-1` — Data missing or out of range) / **unknown** (код `9` или `99` — self reported unknown, оставить категорией) / **не пропуск**.
+`collision_year`, `*_reference`, `collision_index` — числа-идентификаторы, не категории.
+
+## Таблица 1. Casualty (10 ключевых колонок)
+
+| № | Колонка | Тип | Описание | Пропуск (NA)? |
+|---|---|---|---|---|
+| 1 | `collision_index` | int64 | Ключ столкновения | не пропуск |
+| 2 | `collision_year` | int16 | Год (2021–2025) | не пропуск |
+| 3 | `vehicle_reference` | int64 | Ключ ТС в столкновении | не пропуск |
+| 4 | `casualty_reference` | int64 | Ключ пострадавшего | не пропуск |
+| 5 | `casualty_class` | int8 | 1 driver/rider, 2 passenger, 3 pedestrian | не пропуск |
+| 6 | `sex_of_casualty` | int8 | 1 male, 2 female, 9 unknown | unknown (9) / NA (-1) |
+| 7 | `age_of_casualty` | int16 | Возраст | NA (-1) |
+| 8 | `age_band_of_casualty` | int8 | 1–11 | NA (-1) |
+| 9 | `casualty_severity` | int8 | 1 fatal, 2 serious, 3 slight (порядковая) | не пропуск |
+| 10 | `casualty_type` | int16 | 0 pedestrian, 1 cyclist, 2–5 motorcycle, 8 taxi, 9 car, 10 minibus, 11 bus, 16 horse, 17 agri, 18 tram, 19 van, 20–21 goods, 22 mobility scooter, 23 — year-dependent (см. §1), 33 PPT (по conversion), 90 other, 97–99 unknown | unknown (99) / NA (-1) |
+
+**Прочие колонки, не используются:** `casualty_imd_decile`, `lsoa_of_casualty`, `enhanced_casualty_severity`, `casualty_injury_based`, `casualty_adjusted_severity_serious`, `casualty_adjusted_severity_slight`, `casualty_distance_banding`, `escooter_flag`, `pedestrian_location`, `pedestrian_movement`, `car_passenger`, `bus_or_coach_passenger`, `pedestrian_road_maintenance_worker`.
+
+## Таблица 2. Vehicle (10 ключевых колонок)
+
+| № | Колонка | Тип | Описание | Пропуск (NA)? |
+|---|---|---|---|---|
+| 1 | `collision_index` | int64 | Ключ столкновения | не пропуск |
+| 2 | `collision_year` | int16 | Год | не пропуск |
+| 3 | `vehicle_reference` | int64 | Ключ ТС | не пропуск |
+| 4 | `vehicle_type` | int16 | 1 pedal cycle, 2–5 motorcycle, 8 taxi, 9 car, 10 minibus, 11 bus, 16 horse, 17 agri, 18 tram, 19 van, 20–21 goods, 22 mobility scooter, **23 electric motorcycle**, 33 PPT, 90 other, 97–99 unknown | unknown (99) / NA (-1) |
+| 5 | `age_of_driver` | int16 | Возраст водителя | NA (-1) |
+| 6 | `sex_of_driver` | int8 | 1 male, 2 female, 3 not known | unknown (3) / NA (-1) |
+| 7 | `vehicle_manoeuvre` | int16 | 1–20, 99 unknown | unknown (99) / NA (-1) |
+| 8 | `engine_capacity_cc` | int32 | Объём двигателя | NA (-1) |
+| 9 | `driver_imd_decile` | int8 | 1–10 (с 2016) | NA (-1) |
+| 10 | `escooter_flag` | int8 | 1 yes, 0 no (поле с 2023) | NA (-1) для 2021–2022; 0/1 с 2023 |
+
+## Таблица 3. Collision (10 ключевых колонок)
+
+| № | Колонка | Тип | Описание | Пропуск (NA)? |
+|---|---|---|---|---|
+| 1 | `collision_index` | int64 | Ключ столкновения | не пропуск |
+| 2 | `collision_year` | int16 | Год | не пропуск |
+| 3 | `collision_severity` | int8 | 1 fatal, 2 serious, 3 slight (порядковая) | не пропуск |
+| 4 | `number_of_vehicles` | int16 | Число ТС | не пропуск |
+| 5 | `number_of_casualties` | int16 | Число пострадавших | не пропуск |
+| 6 | `date` | datetime | DD/MM/YYYY | не пропуск |
+| 7 | `time` | time | HH:MM | NA (null) |
+| 8 | `police_force` | int16 | 1–99; 91–98 discontinued 2019; 99 Police Scotland с 2019 | не пропуск |
+| 9 | `road_type` | int8 | 1 roundabout, 2 one way, 3 dual, 6 single, 7 slip, 9 unknown, 12 one way/slip | unknown (9) / NA (-1) |
+| 10 | `urban_or_rural_area` | int8 | 1 urban, 2 rural, 3 unallocated | NA (-1) |
+
+`lsoa_of_collision_location` — England and Wales only (Scotland → NA).
