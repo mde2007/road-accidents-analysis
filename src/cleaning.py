@@ -69,6 +69,52 @@ MISSING_RULES = {
     "casualty_distance_banding": {"na": [-1]},
 }
 
+types_rules = {
+    "collision_index": str,
+    "collision_year": int,
+    "collision_ref_no": str,
+    "location_easting_osgr": float,
+    "location_northing_osgr": float,
+    "longitude": float,
+    "latitude": float,
+    "police_force": int,
+    "collision_severity": int,
+    "number_of_vehicles": int,
+    "number_of_casualties": int,
+    "date": 'datatime',
+    "day_of_week": int,
+    "time": str,
+    "local_authority_district": int,
+    "local_authority_ons_district": str,
+    "local_authority_highway": str,
+    "local_authority_highway_current": str,
+    "first_road_class": int,
+    "first_road_number": int,
+    "road_type": int,
+    "speed_limit": int,
+    "junction_detail_historic": int,
+    "junction_detail": int,
+    "junction_control": int,
+    "second_road_class": int,
+    "second_road_number": int,
+    "pedestrian_crossing_human_control_historic": int,
+    "pedestrian_crossing_physical_facilities_historic": int,
+    "pedestrian_crossing": int,
+    "light_conditions": int,
+    "weather_conditions": int,
+    "road_surface_conditions": int,
+    "special_conditions_at_site": int,
+    "carriageway_hazards_historic": int,
+    "carriageway_hazards": int,
+    "urban_or_rural_area": int,
+    "did_police_officer_attend_scene_of_accident": int,
+    "trunk_road_flag": int,
+    "lsoa_of_accident_location": str,
+    "enhanced_severity_collision": int,
+    "collision_injury_based": int,
+    "collision_adjusted_severity_serious": float,
+    "collision_adjusted_severity_slight": float,
+}
 
 def replace_missing_values(dataframe, rules=MISSING_RULES):
     df = dataframe.copy()
@@ -80,3 +126,57 @@ def replace_missing_values(dataframe, rules=MISSING_RULES):
         df[col] = df[col].replace(values["na"], pd.NA)
 
     return df
+
+
+def convert_data_types(dataframe, types_rules):
+    df = dataframe.copy()
+    for col, py_type in types_rules.items():
+        if col not in df.columns:
+            continue
+
+        if py_type is str:
+            df[col] = df[col].astype("string")
+
+        elif py_type is bool:
+            df[col] = df[col].astype("boolean")
+
+        elif py_type is int:
+            df[col] = pd.to_numeric(df[col]).astype("Int64")
+
+        elif py_type is float:
+            df[col] = pd.to_numeric(df[col]).astype("Float64")
+        elif py_type == "datetime":
+            df[col] = pd.to_datetime(
+                df[col],
+                format="%d/%m/%Y",
+                errors="coerce"
+            )
+
+        else:
+            df[col] = df[col].astype(py_type)
+
+    return df
+
+
+test_df = pd.DataFrame({
+    "road_type": [1, -1, 3],
+    "speed_limit": [30, 99, 60]
+})
+
+test_result = replace_missing_values(test_df)
+
+print(test_result)
+test_df = pd.DataFrame({
+    "collision_year": ["2023", "2024"],
+    "date": ["15/03/2023", "21/07/2024"]
+})
+
+test_rules = {
+    "collision_year": int,
+    "date": "datetime"
+}
+
+test_result = convert_data_types(test_df, test_rules)
+
+print(test_result.dtypes)
+print(test_result)
