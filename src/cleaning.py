@@ -1,8 +1,9 @@
 import pandas as pd
 
+
 MISSING_RULES = {
     # ---------- COLLISION ----------
-    "enhanced_collision_severity": {"na": [-1]},
+    "enhanced_severity_collision": {"na": [-1]},
     "local_authority_district": {"na": [-1]},
     "local_authority_ons_district": {"na": [-1]},
     "local_authority_highway": {"na": [-1]},
@@ -25,7 +26,6 @@ MISSING_RULES = {
     "carriageway_hazards_historic": {"na": [-1], "unknown": [9]},
     "carriageway_hazards": {"na": [-1], "unknown": [99]},
     "urban_or_rural_area": {"na": [-1], "normal": [1, 2, 3]},
-    "did_police_officer_attend_scene_of_collision": {"na": [-1]},
     "did_police_officer_attend_scene_of_accident": {"na": [-1]},
     "trunk_road_flag": {"na": [-1]},
     # ---------- VEHICLE ----------
@@ -81,7 +81,7 @@ types_rules = {
     "collision_severity": int,
     "number_of_vehicles": int,
     "number_of_casualties": int,
-    "date": 'datatime',
+    "date": 'datetime',
     "day_of_week": int,
     "time": str,
     "local_authority_district": int,
@@ -157,26 +157,21 @@ def convert_data_types(dataframe, types_rules):
 
     return df
 
+def parse_datetime(dataframe):
+    df = dataframe.copy()
+    date_only = df["date"].dt.normalize()
+    time_delta = pd.to_timedelta(df["time"].astype("string"), errors="coerce")
+    df["datetime"] = date_only + time_delta
+    return df
 
-test_df = pd.DataFrame({
-    "road_type": [1, -1, 3],
-    "speed_limit": [30, 99, 60]
-})
+def add_time_features(dataframe):
+    df = dataframe.copy()
+    df['year'] = df['datetime'].dt.year
+    df['month'] = df['datetime'].dt.month
+    df['hour'] = df['datetime'].dt.hour
+    mapping = {1: 6, 2: 0, 3: 1, 4: 2, 5: 3, 6: 4, 7: 5}
+    df['weekday_pd'] = df['day_of_week'].map(mapping)
+    df['is_weekend'] = df['weekday_pd'] >= 5
+    df['part_of_day'] = pd.cut(df['datetime'].dt.hour, bins=[0, 6, 12, 18, 24], right=False, labels =['night', 'morning', 'day', 'evening'])
+    return df
 
-test_result = replace_missing_values(test_df)
-
-print(test_result)
-test_df = pd.DataFrame({
-    "collision_year": ["2023", "2024"],
-    "date": ["15/03/2023", "21/07/2024"]
-})
-
-test_rules = {
-    "collision_year": int,
-    "date": "datetime"
-}
-
-test_result = convert_data_types(test_df, test_rules)
-
-print(test_result.dtypes)
-print(test_result)

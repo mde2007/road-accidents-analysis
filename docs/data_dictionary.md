@@ -7,7 +7,7 @@
 
 | № | Колонка | Тип | Описание | Пропуск (NA)? |
 |---|---|---|---|---|
-| 1 | `collision_index` | int64 | Ключ столкновения | не пропуск |
+| 1 | `collision_index` | string | Ключ столкновения | не пропуск |
 | 2 | `collision_year` | int16 | Год (2021–2025) | не пропуск |
 | 3 | `vehicle_reference` | int64 | Ключ ТС в столкновении | не пропуск |
 | 4 | `casualty_reference` | int64 | Ключ пострадавшего | не пропуск |
@@ -24,7 +24,7 @@
 
 | № | Колонка | Тип | Описание | Пропуск (NA)? |
 |---|---|---|---|---|
-| 1 | `collision_index` | int64 | Ключ столкновения | не пропуск |
+| 1 | `collision_index` | string | Ключ столкновения | не пропуск |
 | 2 | `collision_year` | int16 | Год | не пропуск |
 | 3 | `vehicle_reference` | int64 | Ключ ТС | не пропуск |
 | 4 | `vehicle_type` | int16 | 1 pedal cycle, 2–5 motorcycle, 8 taxi, 9 car, 10 minibus, 11 bus, 16 horse, 17 agri, 18 tram, 19 van, 20–21 goods, 22 mobility scooter, **23 electric motorcycle**, 33 PPT, 90 other, 97–99 unknown | unknown (99) / NA (-1) |
@@ -39,7 +39,7 @@
 
 | № | Колонка | Тип | Описание | Пропуск (NA)? |
 |---|---|---|---|---|
-| 1 | `collision_index` | int64 | Ключ столкновения | не пропуск |
+| 1 | `collision_index` | string | Ключ столкновения | не пропуск |
 | 2 | `collision_year` | int16 | Год | не пропуск |
 | 3 | `collision_severity` | int8 | 1 fatal, 2 serious, 3 slight (порядковая) | не пропуск |
 | 4 | `number_of_vehicles` | int16 | Число ТС | не пропуск |
