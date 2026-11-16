@@ -186,14 +186,12 @@ def convert_data_types(dataframe, rules):
 
 def parse_datetime(dataframe):
     df = dataframe.copy()
-    date_only = df["date"].dt.normalize()
 
-    time_delta = pd.to_timedelta(
-        df["time"].astype("string"),
+    df["datetime"] = pd.to_datetime(
+        df["date"].astype("string") + " " + df["time"].astype("string"),
         errors="coerce"
     )
 
-    df["datetime"] = date_only + time_delta
     return df
 
 def add_time_features(dataframe):
