@@ -1,4 +1,15 @@
+from pathlib import Path
+
 import pandas as pd
+
+from .mappings import (
+    SEVERITY_MAPPING,
+    WEATHER_MAPPING,
+    LIGHT_MAPPING,
+    ROAD_TYPE_MAPPING,
+    SURFACE_MAPPING,
+    AREA_MAPPING
+)
 
 
 MISSING_RULES = {
@@ -81,7 +92,7 @@ types_rules = {
     "collision_severity": int,
     "number_of_vehicles": int,
     "number_of_casualties": int,
-    "date": 'datetime',
+    "date": "datetime",
     "day_of_week": int,
     "time": str,
     "local_authority_district": int,
@@ -92,7 +103,6 @@ types_rules = {
     "first_road_number": int,
     "road_type": int,
     "speed_limit": int,
-    "junction_detail_historic": int,
     "junction_detail": int,
     "junction_control": int,
     "second_road_class": int,
@@ -116,6 +126,16 @@ types_rules = {
     "collision_adjusted_severity_slight": float,
 }
 
+COLLISION_MAPPINGS = {
+    "collision_severity": SEVERITY_MAPPING,
+    "weather_conditions": WEATHER_MAPPING,
+    "light_conditions": LIGHT_MAPPING,
+    "road_type": ROAD_TYPE_MAPPING,
+    "road_surface_conditions": SURFACE_MAPPING,
+    "urban_or_rural_area": AREA_MAPPING
+}
+
+
 def replace_missing_values(dataframe, rules=MISSING_RULES):
     df = dataframe.copy()
 
@@ -123,14 +143,14 @@ def replace_missing_values(dataframe, rules=MISSING_RULES):
         if col not in df.columns:
             continue
 
-        df[col] = df[col].replace(values["na"], pd.NA)
+        df[col] = df[col].replace([-1, "-1"], pd.NA)
 
     return df
 
-
-def convert_data_types(dataframe, types_rules):
+def convert_data_types(dataframe, rules):
     df = dataframe.copy()
-    for col, py_type in types_rules.items():
+
+    for col, py_type in rules.items():
         if col not in df.columns:
             continue
 
@@ -141,10 +161,17 @@ def convert_data_types(dataframe, types_rules):
             df[col] = df[col].astype("boolean")
 
         elif py_type is int:
-            df[col] = pd.to_numeric(df[col]).astype("Int64")
+            df[col] = pd.to_numeric(
+                df[col],
+                errors="coerce"
+            ).astype("Int64")
 
         elif py_type is float:
-            df[col] = pd.to_numeric(df[col]).astype("Float64")
+            df[col] = pd.to_numeric(
+                df[col],
+                errors="coerce"
+            ).astype("Float64")
+
         elif py_type == "datetime":
             df[col] = pd.to_datetime(
                 df[col],
@@ -160,18 +187,157 @@ def convert_data_types(dataframe, types_rules):
 def parse_datetime(dataframe):
     df = dataframe.copy()
     date_only = df["date"].dt.normalize()
-    time_delta = pd.to_timedelta(df["time"].astype("string"), errors="coerce")
+
+    time_delta = pd.to_timedelta(
+        df["time"].astype("string"),
+        errors="coerce"
+    )
+
     df["datetime"] = date_only + time_delta
     return df
 
 def add_time_features(dataframe):
     df = dataframe.copy()
-    df['year'] = df['datetime'].dt.year
-    df['month'] = df['datetime'].dt.month
-    df['hour'] = df['datetime'].dt.hour
-    mapping = {1: 6, 2: 0, 3: 1, 4: 2, 5: 3, 6: 4, 7: 5}
-    df['weekday_pd'] = df['day_of_week'].map(mapping)
-    df['is_weekend'] = df['weekday_pd'] >= 5
-    df['part_of_day'] = pd.cut(df['datetime'].dt.hour, bins=[0, 6, 12, 18, 24], right=False, labels =['night', 'morning', 'day', 'evening'])
+
+    df["year"] = df["datetime"].dt.year
+    df["month"] = df["datetime"].dt.month
+    df["hour"] = df["datetime"].dt.hour
+
+    mapping = {
+        1: 6,
+        2: 0,
+        3: 1,
+        4: 2,
+        5: 3,
+        6: 4,
+        7: 5
+    }
+
+    df["weekday_pd"] = df["day_of_week"].map(mapping)
+
+    df["is_weekend"] = df["weekday_pd"].isin([5, 6]).astype("boolean")
+
+    df["part_of_day"] = pd.cut(
+        df["datetime"].dt.hour,
+        bins=[0, 6, 12, 18, 24],
+        right=False,
+        labels=["night", "morning", "day", "evening"]
+    )
+
     return df
 
+
+def decode(dataframe, mappings=COLLISION_MAPPINGS):
+    df = dataframe.copy()
+
+    for col, mapping in mappings.items():
+        if col in df.columns:
+            df[col] = df[col].map(mapping)
+
+    return df
+
+def coords(dataframe):
+    df = dataframe.copy()
+
+    df["has_coords"] = (
+        df["latitude"].notna() &
+        df["longitude"].notna()
+    )
+
+    return df
+
+def aggregate_vehicle(vehicle):
+    df = vehicle.copy()
+
+    df["age_of_driver"] = pd.to_numeric(
+        df["age_of_driver"],
+        errors="coerce"
+    )
+
+    result = df.groupby("collision_index").agg(
+        driver_age_min=("age_of_driver", "min"),
+        driver_age_max=("age_of_driver", "max"),
+        driver_age_mean=("age_of_driver", "mean")
+    ).reset_index()
+
+    return result
+
+def aggregate_casualty(casualty):
+    df = casualty.copy()
+
+    df["age_of_casualty"] = pd.to_numeric(
+        df["age_of_casualty"],
+        errors="coerce"
+    )
+    result = df.groupby("collision_index").agg(
+        casualty_age_min=("age_of_casualty", "min"),
+        casualty_age_max=("age_of_casualty", "max"),
+        casualty_age_mean=("age_of_casualty", "mean")
+    ).reset_index()
+    return result
+
+
+def merge_tables(collision, vehicle, casualty):
+    if not collision["collision_index"].is_unique:
+        raise ValueError(
+            "В таблице collision обнаружены повторяющиеся collision_index"
+        )
+    df_vehicle = aggregate_vehicle(vehicle)
+    df_casualty = aggregate_casualty(casualty)
+    result = collision.merge(
+        df_vehicle,
+        on="collision_index",
+        how="left",
+        validate="one_to_one"
+    )
+    result = result.merge(
+        df_casualty,
+        on="collision_index",
+        how="left",
+        validate="one_to_one"
+    )
+    assert len(result) == len(collision)
+    assert result["collision_index"].is_unique
+    return result
+
+
+
+def clean_dataset(collision, vehicle, casualty):
+    collision = replace_missing_values(collision)
+    vehicle = replace_missing_values(vehicle)
+    casualty = replace_missing_values(casualty)
+    collision = convert_data_types(
+        collision,
+        types_rules
+    )
+    vehicle["collision_index"] = vehicle["collision_index"].astype("string")
+    casualty["collision_index"] = casualty["collision_index"].astype("string")
+    collision = parse_datetime(collision)
+    collision = add_time_features(collision)
+    collision = coords(collision)
+    collision = decode(collision)
+    result = merge_tables(
+        collision,
+        vehicle,
+        casualty
+    )
+
+    return result
+
+def save_processed(dataframe, filename="collisions.parquet"):
+
+    output_dir = Path("data") / "processed"
+
+    output_dir.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    output_path = output_dir / filename
+
+    dataframe.to_parquet(
+        output_path,
+        index=False
+    )
+
+    return output_path

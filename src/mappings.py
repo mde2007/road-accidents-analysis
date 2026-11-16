@@ -1,15 +1,3 @@
-import pandas as pd
-
-guide_path = 'docs/dft-road-casualty-statistics-road-safety-open-dataset-data-guide-2025.xlsx'
-
-xls = pd.ExcelFile(guide_path)
-df = xls.parse(xls.sheet_names[0])
-print(df)
-force_df = df[df['field name'] == 'urban_or_rural_area']
-
-force_df = force_df[['code/format', 'label']]
-print(force_df)
-
 SEVERITY_MAPPING = {
     1:"Fatal",
     2:"Serious",
@@ -56,13 +44,7 @@ SURFACE_MAPPING = {
     9:"unknown (self reported)"
 }
 AREA_MAPPING = {
-    1:"Fine no high winds",
-    2:"Raining no high winds",
-    3:"Snowing no high winds",
-    4:"Fine + high winds",
-    5:"Raining + high winds",
-    6:"Snowing + high winds",
-    7:"Fog or mist",
-    8:"Other",
-    9:"Unknown"
+    1:"Urban",
+    2:"Rural",
+    3:"Unallocated"
 }
