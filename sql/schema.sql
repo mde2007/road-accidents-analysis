@@ -1,6 +1,5 @@
-CREATE TABLE collisions (
+CREATE TABLE IF NOT EXISTS collisions (
     collision_index TEXT PRIMARY KEY,
-
     collision_year INTEGER,
     collision_ref_no TEXT,
     location_easting_osgr DOUBLE PRECISION,
@@ -43,12 +42,29 @@ CREATE TABLE collisions (
     enhanced_severity_collision INTEGER,
     collision_injury_based INTEGER,
     collision_adjusted_severity_serious DOUBLE PRECISION,
-    collision_adjusted_severity_slight DOUBLE PRECISION
-);
-CREATE TABLE vehicles(
-    collision_index TEXT,
-    vehicle_reference INTEGER,
+    collision_adjusted_severity_slight DOUBLE PRECISION,
 
+    datetime TIMESTAMP,
+    year INTEGER,
+    month INTEGER,
+    hour INTEGER,
+    weekday_pd INTEGER,
+    is_weekend BOOLEAN,
+    part_of_day TEXT,
+    has_coords BOOLEAN,
+    driver_age_min DOUBLE PRECISION,
+    driver_age_max DOUBLE PRECISION,
+    driver_age_mean DOUBLE PRECISION,
+    casualty_age_min DOUBLE PRECISION,
+    casualty_age_max DOUBLE PRECISION,
+    casualty_age_mean DOUBLE PRECISION
+);
+
+CREATE TABLE IF NOT EXISTS vehicles (
+    collision_index TEXT NOT NULL,
+    collision_year INTEGER,
+    collision_ref_no TEXT,
+    vehicle_reference INTEGER NOT NULL,
     vehicle_type INTEGER,
     towing_and_articulation INTEGER,
     vehicle_manoeuvre_historic INTEGER,
@@ -77,21 +93,20 @@ CREATE TABLE vehicles(
     lsoa_of_driver TEXT,
     escooter_flag INTEGER,
     driver_distance_banding INTEGER,
-
     PRIMARY KEY (collision_index, vehicle_reference),
-
     FOREIGN KEY (collision_index)
         REFERENCES collisions(collision_index)
-
 );
-create table casualties(
-    collision_index TEXT,
-    casualty_reference INTEGER,
 
-    casualty_class INTEGER,
-    vehicle_reference INTEGER,
+CREATE TABLE IF NOT EXISTS casualties (
+    collision_index TEXT NOT NULL,
+
+
     collision_year INTEGER,
     collision_ref_no TEXT,
+    vehicle_reference INTEGER,
+    casualty_reference INTEGER NOT NULL,
+    casualty_class INTEGER,
     sex_of_casualty INTEGER,
     age_of_casualty INTEGER,
     age_band_of_casualty INTEGER,
@@ -109,9 +124,9 @@ create table casualties(
     casualty_adjusted_severity_serious DOUBLE PRECISION,
     casualty_adjusted_severity_slight DOUBLE PRECISION,
     casualty_distance_banding INTEGER,
+    escooter_flag INTEGER,
 
     PRIMARY KEY (collision_index, casualty_reference),
-
     FOREIGN KEY (collision_index)
         REFERENCES collisions(collision_index)
 );
